@@ -25,7 +25,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .side .card{padding:12px 14px;border-radius:12px}
 .neg{color:var(--neg)}.pos{color:var(--accent)}
 .acc{display:flex;gap:14px;flex-wrap:wrap}
-.acc label{display:flex;align-items:baseline;gap:4px;font-size:14px;color:var(--muted)}
+.acc span{font-size:14px;color:var(--muted)}.acc b{color:var(--ink);font-weight:600}.acc label{display:flex;align-items:baseline;gap:4px;font-size:14px;color:var(--muted)}
 .acc input{width:84px;background:none;border:0;border-bottom:1px dashed var(--line);border-radius:0;padding:2px 0;color:var(--ink);font-weight:600}
 input,select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:10px 12px;width:100%;min-width:0}
 input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -64,7 +64,7 @@ form.grid>.half{grid-column:auto}
 .legend li{display:flex;align-items:center;gap:6px}
 .legend span{width:9px;height:9px;border-radius:50%}
 .legend em{font-style:normal;color:var(--ink);font-variant-numeric:tabular-nums}
-.fr{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.fr{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
 .fr .st{font-size:14px}
 .link{background:none;border:1px solid var(--line);border-radius:8px;padding:4px 10px;font-size:14px}
 .link:hover{border-color:var(--accent)}
@@ -75,7 +75,7 @@ body:not(.locked) #auth{display:none}body.locked main>*:not(#auth){display:none}
 <body class="locked">
 <main>
   <section class="card" id="auth">
-    <div class="lbl">Sign in with the same account you use in your habit tracker.</div>
+    <div class="lbl">Sign in to sync your expenses. First time? Tap Create account.</div>
     <form class="grid" id="authform">
       <input id="email" type="email" placeholder="Email" aria-label="Email" autocomplete="email">
       <input id="pw" type="password" placeholder="Password" aria-label="Password" autocomplete="current-password">
@@ -88,10 +88,8 @@ body:not(.locked) #auth{display:none}body.locked main>*:not(#auth){display:none}
     <div class="card">
       <div class="lbl">You have</div>
       <div class="num" id="have">₹0</div>
-      <div class="acc">
-        <label>Cash ₹<input id="cash" type="number" inputmode="decimal" step="0.01" aria-label="Cash balance"></label>
-        <label>Online ₹<input id="online" type="number" inputmode="decimal" step="0.01" aria-label="Online balance"></label>
-      </div>
+      <div class="acc"><span>Cash <b id="cashv">₹0</b></span><span>Online <b id="onlinev">₹0</b></span></div>
+      <button class="link" id="adjbtn" type="button" style="margin-top:12px">Update balance</button>
     </div>
     <div class="side">
       <div class="card"><div class="lbl">You owe</div><div class="num2 neg" id="owe">₹0</div></div>
@@ -103,7 +101,8 @@ body:not(.locked) #auth{display:none}body.locked main>*:not(#auth){display:none}
   <section class="card panel" id="panel" hidden>
     <div class="seg">
       <button type="button" data-m="expense" aria-pressed="true">Expense</button>
-      <button type="button" data-m="transfer" aria-pressed="false">Lend / repay</button>
+      <button type="button" data-m="transfer" aria-pressed="false">Loan / repay</button>
+      <button type="button" data-m="balance" aria-pressed="false">Balance</button>
     </div>
     <form class="grid" id="form" autocomplete="off">
       <input id="amount" type="number" inputmode="decimal" step="0.01" min="0" placeholder="Amount" aria-label="Amount">
@@ -111,10 +110,11 @@ body:not(.locked) #auth{display:none}body.locked main>*:not(#auth){display:none}
       <input id="date" class="half" type="date" aria-label="Date">
       <select id="paid" data-w="e" aria-label="Paid by"></select>
       <select id="oweSel" data-w="ef" aria-label="Record type"><option value="rec">Just a record, I don’t owe anything</option><option value="owe">I owe them for this</option></select>
-      <select id="dir" data-w="t" aria-label="Direction"><option value="gave">I gave them money</option><option value="got">They gave me money</option></select>
+      <select id="dir" data-w="t" aria-label="What happened"><option value="lent">I lent them money</option><option value="borrowed">I borrowed from them</option><option value="paidback">I paid them back</option><option value="gotback">They paid me back</option></select>
+      <select id="bdir" data-w="b" aria-label="Direction"><option value="in">Money in (salary, gift, starting balance)</option><option value="out">Money out (not an expense)</option></select>
       <select id="who" data-w="em t" aria-label="Friend"></select>
       <input id="share" type="number" inputmode="decimal" step="0.01" min="0" hidden>
-      <select id="acct" data-w="em t" aria-label="Account"><option value="cash">From / to cash</option><option value="online">From / to online</option></select>
+      <select id="acct" data-w="em t b" aria-label="Account"><option value="cash">From / to cash</option><option value="online">From / to online</option></select>
       <input id="note" type="text" maxlength="60" placeholder="Note (optional)" aria-label="Note">
       <p class="err" id="err" role="alert"></p>
       <button class="primary" type="submit">Save entry</button>
@@ -149,8 +149,8 @@ body:not(.locked) #auth{display:none}body.locked main>*:not(#auth){display:none}
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
-const SUPABASE_URL="https://mnjsbedhgwntpmpitzwq.supabase.co";
-const SUPABASE_ANON_KEY="sb_publishable_jUzsxz1Fq-xzWuYgFsRk-w_sIIqzRoP";
+const SUPABASE_URL="YOUR_SUPABASE_URL";
+const SUPABASE_ANON_KEY="YOUR_SUPABASE_ANON_KEY";
 const CUR="₹",KEY="ledger-v2";
 const CATS={Food:"#D9822B",Transport:"#3B82A6",Bills:"#7A6FB5",Shopping:"#C25B7A",Fun:"#4F9D69",Other:"#8A948E"};
 let S={cash:0,online:0,people:[],tx:[]};
@@ -198,7 +198,8 @@ function fillPeople(){
 }
 function sync(){
   const on=new Set();
-  if(mode==="expense"){on.add("e");on.add($("paid").value==="me"?"em":"ef")}else on.add("t");
+  if(mode==="expense"){on.add("e");on.add($("paid").value==="me"?"em":"ef")}else on.add(mode==="transfer"?"t":"b");
+  $("note").placeholder=mode==="balance"?"Note (required): why is the balance changing?":"Note (optional)";
   document.querySelectorAll("[data-w]").forEach(el=>{el.hidden=!el.dataset.w.split(" ").some(k=>on.has(k))});
   const sh=$("share");
   const showShare=(on.has("em")&&$("who").value)||(on.has("ef")&&$("oweSel").value==="owe");
@@ -233,11 +234,14 @@ $("form").addEventListener("submit",e=>{
       t.person=t.paidBy;
       if($("oweSel").value==="owe")t.debtDelta=-share;
     }
+  }else if(mode==="balance"){
+    if(!t.note)return err("Add a note so you remember why the balance changed.");
+    t.type="adjust";t.acct=$("acct").value;t.balDelta=$("bdir").value==="in"?amount:-amount;
   }else{
     const w=$("who").value;
     if(!w)return err(S.people.length?"Choose a friend.":"Add a friend in the Friends tab first.");
-    const gave=$("dir").value==="gave";
-    t.type="transfer";t.person=w;t.acct=$("acct").value;
+    const k=$("dir").value,gave=k==="lent"||k==="paidback";
+    t.type="transfer";t.kind=k;t.person=w;t.acct=$("acct").value;
     t.balDelta=gave?-amount:amount;t.debtDelta=gave?amount:-amount;
   }
   if(t.acct)S[t.acct]=r2((S[t.acct]||0)+t.balDelta);
@@ -246,9 +250,7 @@ $("form").addEventListener("submit",e=>{
   closePanel();render();
 });
 
-["cash","online"].forEach(k=>$(k).addEventListener("change",()=>{
-  const v=parseFloat($(k).value);S[k]=isNaN(v)?0:r2(v);save();render();
-}));
+$("adjbtn").onclick=()=>{openPanel();setMode("balance")};
 
 document.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{
   tab=b.dataset.t;render();
@@ -266,9 +268,7 @@ $("fform").addEventListener("submit",e=>{
 });
 
 function render(){
-  const f=document.activeElement&&document.activeElement.id;
-  if(f!=="cash")$("cash").value=S.cash||"";
-  if(f!=="online")$("online").value=S.online||"";
+  $("cashv").textContent=fmt(S.cash);$("onlinev").textContent=fmt(S.online);
   $("have").textContent=fmt(S.cash+S.online);
   const n=nets();let owe=0,owed=0;
   Object.values(n).forEach(v=>{if(v<0)owe-=v;else owed+=v});
@@ -290,8 +290,13 @@ function renderActivity(){
     li.innerHTML='<span class="dot"></span><div class="t"><div></div><small></small></div><span class="amt"></span><button class="del" aria-label="Delete entry">×</button>';
     const d=new Date(t.date+"T00:00:00").toLocaleDateString(undefined,{day:"numeric",month:"short"});
     let title,sub=[d];
-    if(t.type==="transfer"){
-      title=(t.balDelta<0?"Gave ":"Got from ")+pname(t.person)+(t.balDelta<0?"":"")+(t.note?", "+t.note:"");
+    if(t.type==="adjust"){
+      title=(t.balDelta>0?"Money in":"Money out")+(t.note?": "+t.note:"");
+    }else if(t.type==="transfer"){
+      const L={lent:"Lent to ",borrowed:"Borrowed from ",paidback:"Paid back "};
+      const k=t.kind||(t.balDelta<0?"lent":"borrowed");
+      title=k==="gotback"?pname(t.person)+" paid you back":L[k]+pname(t.person);
+      if(t.note)sub.push(t.note);
     }else{
       title=t.note||t.cat;
       li.querySelector(".dot").style.background=CATS[t.cat]||CATS.Other;
@@ -335,19 +340,11 @@ function renderFriends(n){
   S.people.forEach(p=>{
     const v=n[p.id]||0;
     const row=document.createElement("div");row.className="fr";
-    row.innerHTML='<div><div class="nm"></div><div class="st"></div></div><button class="link" type="button">Settle</button><button class="del" aria-label="Remove friend">×</button>';
+    row.innerHTML='<div><div class="nm"></div><div class="st"></div></div><button class="del" aria-label="Remove friend">×</button>';
     row.querySelector(".nm").textContent=p.name;
     const st=row.querySelector(".st");
     st.textContent=v>0?"Owes you "+fmt(v):v<0?"You owe "+fmt(-v):"All settled";
     st.className="st "+(v>0?"pos":v<0?"neg":"lbl");
-    const sb=row.querySelector(".link");
-    if(!v)sb.hidden=true;
-    sb.onclick=()=>{
-      openPanel();setMode("transfer");
-      $("who").value=p.id;$("dir").value=v>0?"got":"gave";
-      $("amount").value=Math.abs(v);$("note").value="Settled";
-      window.scrollTo({top:0,behavior:"smooth"});
-    };
     row.querySelector(".del").onclick=()=>{
       if(S.tx.some(t=>t.person===p.id||t.paidBy===p.id)){$("ferr").textContent="Delete "+p.name+"’s entries in Activity before removing them.";return}
       S.people=S.people.filter(x=>x.id!==p.id);save();$("ferr").textContent="";render();
