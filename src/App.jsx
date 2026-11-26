@@ -37,9 +37,29 @@ export default function App() {
       if (t.acct) next[t.acct] = r2(s[t.acct] - t.balDelta);
       return next;
     });
-  const addFriend = (name) => {
+  const bankClash = (bank, exceptId) => {
+    const key = bank.toLowerCase().replace(/\s+/g, " ");
+    const hit = bank && S.people.find((p) => p.id !== exceptId && (p.bankName || "").toLowerCase().replace(/\s+/g, " ") === key);
+    return hit ? "That bank name is already saved for " + hit.name + "." : "";
+  };
+  const addFriend = (name, bankName = "") => {
     if (S.people.some((p) => p.name.toLowerCase() === name.toLowerCase())) return name + " is already on the list.";
-    update((s) => ({ ...s, people: [...s.people, { id: "p" + Date.now(), name }] }));
+    const clash = bankClash(bankName);
+    if (clash) return clash;
+    update((s) => ({ ...s, people: [...s.people, { id: "p" + Date.now(), name, ...(bankName ? { bankName } : {}) }] }));
+    return "";
+  };
+  const setBankName = (id, bankName) => {
+    const clash = bankClash(bankName, id);
+    if (clash) return clash;
+    update((s) => ({
+      ...s,
+      people: s.people.map((p) => {
+        if (p.id !== id) return p;
+        const { bankName: _old, ...rest } = p;
+        return bankName ? { ...rest, bankName } : rest;
+      }),
+    }));
     return "";
   };
   const removeFriend = (id) => update((s) => ({ ...s, people: s.people.filter((p) => p.id !== id) }));
@@ -75,7 +95,7 @@ export default function App() {
         {panel ? "Close" : "Add entry"}
       </button>
 
-      {panel && <EntryPanel key={panel.n} people={S.people} initialMode={panel.mode} onSave={addTx} />}
+      {panel && <EntryPanel key={panel.n} people={S.people} tx={S.tx} initialMode={panel.mode} onSave={addTx} onLinkFriend={setBankName} />}
 
       <nav className="tabs">
         {[["activity", "Activity"], ["spending", "Spending"], ["friends", "Friends"]].map(([id, l]) => (
@@ -85,7 +105,7 @@ export default function App() {
 
       {tab === "activity" && <Activity S={S} onDelete={delTx} />}
       {tab === "spending" && <Spending tx={S.tx} view={view} onShift={shift} />}
-      {tab === "friends" && <Friends S={S} onAdd={addFriend} onRemove={removeFriend} />}
+      {tab === "friends" && <Friends S={S} onAdd={addFriend} onRemove={removeFriend} onSetBank={setBankName} />}
 
       <div className="foot">
         <span>{readOnly ? "" : status}</span>

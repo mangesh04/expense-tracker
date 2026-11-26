@@ -533,3 +533,51 @@ form.grid>.half {
 .ro #fform {
   display: none
 }
+
+/* ---- payment screenshot checks ---- */
+.checks {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 14px
+}
+
+.chk.ok {
+  color: var(--accent)
+}
+
+.chk.warn {
+  color: var(--muted)
+}
+
+.chk.bad {
+  color: var(--neg)
+}
+
+.chk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px
+}
+
+.ghost:disabled {
+  opacity: .6;
+  cursor: progress
+}
+
+/* ---- friend bank names ---- */
+.bk {
+  font-size: 14px;
+  margin-top: 4px
+}
+
+.bk.inline {
+  margin-bottom: 0
+}
+
+.ro .fedit {
+  display: none
+}
